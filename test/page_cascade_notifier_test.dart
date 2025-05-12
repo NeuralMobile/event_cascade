@@ -22,7 +22,7 @@ void main() {
             // A bottom notifier that logs but doesn't consume
             PageCascadeNotifier(
               handlers: [
-                CascadeEventHandlerImpl<TestEvent>((e) {
+                CascadeEventHandler<TestEvent>((e) async {
                   calls.add('A');
                   return false;
                 }),
@@ -32,7 +32,7 @@ void main() {
             // A middle notifier that logs but doesn't consume
             PageCascadeNotifier(
               handlers: [
-                CascadeEventHandlerImpl<TestEvent>((e) {
+                CascadeEventHandler<TestEvent>((e) async {
                   calls.add('B');
                   return false;
                 }),
@@ -42,7 +42,7 @@ void main() {
             // A top notifier that logs and consumes
             PageCascadeNotifier(
               handlers: [
-                CascadeEventHandlerImpl<TestEvent>((e) {
+                CascadeEventHandler<TestEvent>((e) async {
                   calls.add('C');
                   return true;
                 }),
@@ -56,6 +56,6 @@ void main() {
 
     // Only 'C' should be called
     PageCascadeNotifier.dispatch(TestEvent(42));
-    expect(calls, ['C']);
+    expectLater(calls, ['C']);
   });
 }

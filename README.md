@@ -51,10 +51,21 @@ flutter pub get
      Widget build(BuildContext context) {
        return PageCascadeNotifier(
          handlers: [
-           CascadeEventHandler<MyEvent>((e) {
-             // handle event e
-             return true; // consume to stop propagation
-           }),
+           // Async handler
+           CascadeEventHandler<MyEvent>(
+             (e) async {
+               // handle event e asynchronously
+               await Future.delayed(Duration(milliseconds: 100));
+               return true; // consume to stop propagation
+             }
+           ),
+           // Synchronous handler using .sync constructor
+           CascadeEventHandler<OtherEvent>.sync(
+             (e) {
+               // handle event e synchronously
+               return true; // consume to stop propagation
+             }
+           ),
          ],
          child: Scaffold(
            appBar: AppBar(title: Text('My Page')),
@@ -68,14 +79,18 @@ flutter pub get
 3. **Dispatch** events from anywhere:
 
    ```dart
+   // Since dispatch is now async, you can await it
+   await PageCascadeNotifier.dispatch(MyEvent(...));
+
+   // Or use without await if you don't need to wait for completion
    PageCascadeNotifier.dispatch(MyEvent(...));
    ```
 
-4. **Ensure** you add the singleton `NavigationTracker` to your `MaterialApp`:
+4. **Ensure** you add the singleton `CascadeNavigationTracker` to your `MaterialApp`:
 
    ```dart
    MaterialApp(
-     navigatorObservers: [NavigationTracker.instance],
+     navigatorObservers: [CascadeNavigationTracker()],
      home: RootScreen(),
    );
    ```
@@ -89,10 +104,22 @@ flutter pub get
 Wraps a typed handler function:
 
 ```dart
-CascadeEventHandler<NotificationEvent>((e) {
-  // process e
-  return true;  // consume
-});
+// Async handler (default)
+CascadeEventHandler<NotificationEvent>(
+  (e) async {
+    // process e asynchronously
+    await someAsyncOperation();
+    return true;  // consume
+  }
+);
+
+// Synchronous handler (using .sync constructor)
+CascadeEventHandler<NotificationEvent>.sync(
+  (e) {
+    // process e synchronously
+    return true;  // consume
+  }
+);
 ```
 
 ### `PageCascadeNotifier` widget
@@ -107,15 +134,15 @@ Tracks context visibility and registers handlers:
 
 * **Static methods**:
 
-    * `dispatch(dynamic event)`: fire an event
+    * `dispatch(dynamic event)`: fire an event asynchronously (returns `Future<void>`)
 
-### `NavigationTracker`
+### `CascadeNavigationTracker`
 
 A singleton `RouteObserver<PageRoute>` you must add to `navigatorObservers`:
 
 ```dart
 MaterialApp(
-  navigatorObservers: [NavigationTracker.instance],
+  navigatorObservers: [CascadeNavigationTracker()],
   // ...
 )
 ```
@@ -132,10 +159,10 @@ class PingEvent { final String msg; PingEvent(this.msg); }
 
 void main() => runApp(
   MaterialApp(
-    navigatorObservers: [NavigationTracker.instance],
+    navigatorObservers: [CascadeNavigationTracker()],
     home: HomeScreen(),
     builder: (ctx, child) => Stack(
-      children: [ child!, Positionned(/* global FAB to dispatch */) ],
+      children: [ child!, Positioned(/* global FAB to dispatch */) ],
     ),
   ),
 );
@@ -198,4 +225,4 @@ Please follow the existing style and add tests for new functionality.
 
 ## 📄 License
 
-MIT © \[Your Name]
+MIT © Prashant Sawant

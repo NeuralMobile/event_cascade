@@ -1,13 +1,11 @@
-// example/lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:event_cascade/event_cascade.dart';
 
 /// Two sample event classes.
-class NotificationEvent {
+class GreetingEvent {
   final String message;
 
-  NotificationEvent(this.message);
+  GreetingEvent(this.message);
 }
 
 class CounterEvent {
@@ -51,7 +49,14 @@ class DispatchOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext c) {
-    return Positioned(top: 100, right: 16, child: const DispatchControls());
+    const padding = 16.0;
+    final edgeInsets = MediaQuery.of(c).viewPadding;
+    return Positioned(
+      top: edgeInsets.top + AppBar().preferredSize.height + padding,
+      right: padding,
+      left: padding,
+      child: const DispatchControls(),
+    );
   }
 }
 
@@ -60,11 +65,11 @@ class DispatchControls extends StatefulWidget {
   const DispatchControls({super.key});
 
   @override
-  _DispatchControlsState createState() => _DispatchControlsState();
+  DispatchControlsState createState() => DispatchControlsState();
 }
 
-class _DispatchControlsState extends State<DispatchControls> {
-  String _selected = 'Notification';
+class DispatchControlsState extends State<DispatchControls> {
+  String _selected = 'Greeting';
   final TextEditingController _textCtrl = TextEditingController();
   int _counter = 0;
 
@@ -74,56 +79,84 @@ class _DispatchControlsState extends State<DispatchControls> {
       elevation: 6,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButton<String>(
-              value: _selected,
-              items: const [
-                DropdownMenuItem(
-                  value: 'Notification',
-                  child: Text('Notification'),
-                ),
-                DropdownMenuItem(value: 'Counter', child: Text('Counter')),
-              ],
-              onChanged: (v) => setState(() => _selected = v!),
-            ),
-            const SizedBox(width: 12),
-            if (_selected == 'Notification')
-              SizedBox(
-                width: 120,
-                child: TextField(
-                  controller: _textCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Message',
-                    isDense: true,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Radio(
+                    value: 'Greeting',
+                    groupValue: _selected,
+                    onChanged: (v) => setState(() => _selected = v!),
                   ),
-                ),
-              )
-            else
-              IconButton(
-                icon: const Icon(Icons.plus_one),
-                tooltip: 'Increment',
-                onPressed: () => setState(() => _counter++),
+                  Text('Greeting Event'),
+                  Radio(
+                    value: 'Counter',
+                    groupValue: _selected,
+                    onChanged: (v) => setState(() => _selected = v!),
+                  ),
+                  Text('Counter Event'),
+                ],
               ),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              child: const Text('Dispatch'),
-              onPressed: () {
-                if (_selected == 'Notification') {
-                  PageCascadeNotifier.dispatch(
-                    NotificationEvent(
-                      _textCtrl.text.trim().isEmpty
-                          ? 'Hello @ ${DateTime.now()}'
-                          : _textCtrl.text.trim(),
+              SizedBox(height: 12),
+              if (_selected == 'Greeting')
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: _textCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Message',
+                      isDense: true,
                     ),
-                  );
-                } else {
-                  PageCascadeNotifier.dispatch(CounterEvent(_counter));
-                }
-              },
-            ),
-          ],
+                  ),
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => setState(() => _counter--),
+                      child: Text(
+                        '➖',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    Text(
+                      '$_counter',
+                      style: Theme.of(context).textTheme.headlineLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _counter++),
+                      child: Text(
+                        '➕',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                  ],
+                ),
+              SizedBox(height: 12),
+              ElevatedButton(
+                child: const Text('Dispatch'),
+                onPressed: () async {
+                  if (_selected == 'Greeting') {
+                    await PageCascadeNotifier.dispatch(
+                      GreetingEvent(
+                        _textCtrl.text.trim().isEmpty
+                            ? 'Hello @ ${DateTime.now()}'
+                            : _textCtrl.text.trim(),
+                      ),
+                    );
+                  } else {
+                    await PageCascadeNotifier.dispatch(CounterEvent(_counter));
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -158,9 +191,9 @@ class PageA extends StatelessWidget {
   Widget build(BuildContext c) {
     return PageCascadeNotifier(
       handlers: [
-        CascadeEventHandlerImpl<NotificationEvent>((e) {
+        CascadeEventHandler<GreetingEvent>((e) {
           debugPrint('[A] saw notification: ${e.message}');
-          return false;
+          return Future.value(false);
         }),
       ],
       child: Scaffold(
@@ -178,13 +211,13 @@ class PageB extends StatelessWidget {
   Widget build(BuildContext c) {
     return PageCascadeNotifier(
       handlers: [
-        CascadeEventHandlerImpl<NotificationEvent>((e) {
+        CascadeEventHandler<GreetingEvent>((e) {
           debugPrint('[B] saw notification: ${e.message}');
-          return false;
+          return Future.value(false);
         }),
-        CascadeEventHandlerImpl<CounterEvent>((e) {
+        CascadeEventHandler<CounterEvent>((e) {
           debugPrint('[B] saw counter: ${e.count}');
-          return e.count % 2 == 0; // consume if even
+          return Future.value(e.count % 2 == 0); // consume if even
         }),
       ],
       child: Scaffold(
@@ -202,9 +235,11 @@ class PageC extends StatelessWidget {
   Widget build(BuildContext c) {
     return PageCascadeNotifier(
       handlers: [
-        CascadeEventHandlerImpl<CounterEvent>((e) {
-          debugPrint('[C] saw counter: ${e.count}');
-          return false;
+        CascadeEventHandler<CounterEvent>((e) {
+          ScaffoldMessenger.of(
+            c,
+          ).showSnackBar(SnackBar(content: Text('[C] handled: ${e.count}')));
+          return Future.value(true);
         }),
       ],
       child: Scaffold(
@@ -222,15 +257,15 @@ class PageD extends StatelessWidget {
   Widget build(BuildContext c) {
     return PageCascadeNotifier(
       handlers: [
-        CascadeEventHandlerImpl<CounterEvent>((e) {
+        CascadeEventHandler<CounterEvent>((e) {
           debugPrint('[D] saw counter: ${e.count}');
-          return false;
+          return Future.value(false);
         }),
-        CascadeEventHandlerImpl<NotificationEvent>((e) {
+        CascadeEventHandler<GreetingEvent>((e) {
           ScaffoldMessenger.of(
             c,
           ).showSnackBar(SnackBar(content: Text('[D] handled: ${e.message}')));
-          return true;
+          return Future.value(true);
         }),
       ],
       child: Scaffold(

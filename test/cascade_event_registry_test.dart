@@ -24,7 +24,7 @@ void main() {
               Builder(
                 builder: (c) {
                   CascadeEventRegistry.registerContext(c);
-                  CascadeEventRegistry.registerHandler<XEvent>(c, (e) {
+                  CascadeEventRegistry.registerHandler<XEvent>(c, (e) async {
                     calls.add('first');
                     return false; // do not consume
                   });
@@ -35,7 +35,7 @@ void main() {
               Builder(
                 builder: (c) {
                   CascadeEventRegistry.registerContext(c);
-                  CascadeEventRegistry.registerHandler<XEvent>(c, (e) {
+                  CascadeEventRegistry.registerHandler<XEvent>(c, (e) async {
                     calls.add('second');
                     return true; // consume
                   });
@@ -49,7 +49,7 @@ void main() {
 
       // Dispatch; second should fire first and consume
       CascadeEventRegistry.dispatch(XEvent('hello'));
-      expect(calls, ['second']);
+      expectLater(calls, ['second']);
     },
   );
 }
