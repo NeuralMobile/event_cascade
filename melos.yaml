@@ -1,0 +1,37 @@
+name: event_cascade
+repository: https://github.com/NeuralMobile/event_cascade
+
+packages:
+  - .
+
+command:
+  version:
+    # Only allow versioning to happen on main branch
+    branch: main
+    # Generates a link to a prefilled GitHub release creation page
+    generateReleaseUrl: true
+    # Specify the conventional commit types that indicate a release is needed
+    releaseTypes:
+      - feat
+      - fix
+    # Use "independent" versioning, meaning each package is versioned independently
+    workspaceChangelog: false
+
+scripts:
+  analyze:
+    run: dart analyze .
+    description: Run the analyzer on all packages
+
+  test:
+    run: flutter test
+    description: Run tests for all packages
+
+  publish:
+    run: |
+      flutter pub publish --dry-run
+      echo "Ready to publish? (y/n)"
+      read answer
+      if [ "$answer" = "y" ]; then
+        flutter pub publish
+      fi
+    description: Publish the package to pub.dev

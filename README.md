@@ -212,6 +212,38 @@ flutter test
 
 ---
 
+## 📋 Development with Melos
+
+This package uses [Melos](https://melos.invertase.dev/) to manage versioning and publishing.
+
+### Setup
+
+After cloning the repository, run:
+
+```bash
+flutter pub get
+dart pub global activate melos
+melos bootstrap
+```
+
+### Common Commands
+
+```bash
+# Run analyzer on all packages
+melos run analyze
+
+# Run tests on all packages
+melos run test
+
+# Publish the package (includes dry-run and confirmation)
+melos run publish
+
+# Bump version according to conventional commits
+melos version
+```
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repo: `git clone https://github.com/your_org/event_cascade.git`
