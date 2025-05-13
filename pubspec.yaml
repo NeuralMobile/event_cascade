@@ -1,6 +1,6 @@
 name: event_cascade
-description: "A top-down, most-recently-active-first event dispatching framework for Flutter. Supports multiple event types, works with Navigator routes, custom TabControllers, or any context-based UI."
-version: 0.1.0
+description: "A top-down, recent-first Flutter event framework supporting multiple event types, routes, TabControllers, and context-based UI."
+version: 0.1.1
 homepage: https://github.com/NeuralMobile/event_cascade
 repository: https://github.com/NeuralMobile/event_cascade
 issue_tracker: https://github.com/NeuralMobile/event_cascade/issues
