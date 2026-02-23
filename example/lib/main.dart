@@ -84,22 +84,18 @@ class DispatchControlsState extends State<DispatchControls> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Radio(
-                    value: 'Greeting',
-                    groupValue: _selected,
-                    onChanged: (v) => setState(() => _selected = v!),
-                  ),
-                  Text('Greeting Event'),
-                  Radio(
-                    value: 'Counter',
-                    groupValue: _selected,
-                    onChanged: (v) => setState(() => _selected = v!),
-                  ),
-                  Text('Counter Event'),
-                ],
+              RadioGroup<String>(
+                groupValue: _selected,
+                onChanged: (v) => setState(() => _selected = v ?? _selected),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Radio(value: 'Greeting'),
+                    Text('Greeting Event'),
+                    Radio(value: 'Counter'),
+                    Text('Counter Event'),
+                  ],
+                ),
               ),
               SizedBox(height: 12),
               if (_selected == 'Greeting')

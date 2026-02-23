@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'cascade_event_registry.dart';
 import 'cascade_navigation_tracker.dart';
@@ -6,6 +8,9 @@ import 'cascade_navigation_tracker.dart';
 ///
 /// This class wraps a function that processes events of type [T] and implements
 /// the [EventHandlerBase] interface for registration with the event registry.
+///
+/// Supports subclass matching: a handler for type `Animal` will also
+/// receive events of type `Dog extends Animal`.
 ///
 /// Example:
 /// ```dart
@@ -16,13 +21,13 @@ import 'cascade_navigation_tracker.dart';
 /// ```
 class CascadeEventHandler<T> extends EventHandlerBase {
   /// The function that will handle events of type [T].
-  final Future<bool> Function(T) _fn;
+  final FutureOr<bool> Function(T) _fn;
 
   /// Creates a new event handler for events of type [T].
   ///
-  /// [_fn] - A function that takes an event of type [T] and returns a Future\<bool\>
-  /// indicating whether the event should be consumed (true) or allowed to
-  /// propagate to other handlers (false).
+  /// [_fn] - A function that takes an event of type [T] and returns a
+  /// `bool` or `Future<bool>` indicating whether the event should be
+  /// consumed (true) or allowed to propagate (false).
   CascadeEventHandler(this._fn);
 
   /// Creates a new event handler for events of type [T] with a synchronous handler function.
@@ -30,13 +35,16 @@ class CascadeEventHandler<T> extends EventHandlerBase {
   /// [fn] - A function that takes an event of type [T] and returns a boolean
   /// indicating whether the event should be consumed (true) or allowed to
   /// propagate to other handlers (false).
-  CascadeEventHandler.sync(bool Function(T) fn) : _fn = ((T e) async => fn(e));
+  CascadeEventHandler.sync(bool Function(T) fn) : _fn = fn;
 
   @override
   Type get type => T;
 
   @override
-  Future<bool> handle(dynamic event) => _fn(event as T);
+  bool canHandle(dynamic event) => event is T;
+
+  @override
+  Future<bool> handle(dynamic event) async => _fn(event as T);
 }
 
 /// Mixin to track route lifecycle events and manage context registration.
@@ -46,27 +54,30 @@ class CascadeEventHandler<T> extends EventHandlerBase {
 /// when the widget is disposed.
 mixin _CascadeContextAware<T extends StatefulWidget> on State<T>
     implements RouteAware {
+  PageRoute<dynamic>? _subscribedRoute;
+
   @override
   void initState() {
     super.initState();
-    // Register this context with the event registry
     CascadeEventRegistry.registerContext(context);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Subscribe to route events if this widget is in a route
     final route = ModalRoute.of(context);
-    if (route is PageRoute) {
-      CascadeNavigationTracker().subscribe(this, route);
+    if (route is PageRoute && route != _subscribedRoute) {
+      if (_subscribedRoute != null) {
+        CascadeNavigationTracker.instance.unsubscribe(this);
+      }
+      _subscribedRoute = route;
+      CascadeNavigationTracker.instance.subscribe(this, route);
     }
   }
 
   @override
   void dispose() {
-    // Clean up subscriptions and registrations
-    CascadeNavigationTracker().unsubscribe(this);
+    CascadeNavigationTracker.instance.unsubscribe(this);
     CascadeEventRegistry.unregisterContext(context);
     super.dispose();
   }
@@ -81,9 +92,7 @@ mixin _CascadeContextAware<T extends StatefulWidget> on State<T>
 
   /// Called when a route has been pushed onto the navigator above this route.
   @override
-  void didPushNext() {
-    // No action needed when a new route is pushed on top
-  }
+  void didPushNext() {}
 
   /// Called when this route has been popped off the navigator.
   @override
@@ -172,49 +181,85 @@ class PageCascadeNotifier extends StatefulWidget {
 ///
 /// This class manages the lifecycle of event handlers and tab selection tracking.
 class PageCascadeNotifierState extends State<PageCascadeNotifier>
-    with _CascadeContextAware, RouteAware {
+    with _CascadeContextAware {
   TabController? _tc;
 
   @override
   void initState() {
     super.initState();
-    // Register all handlers provided in the constructor
-    for (final h in widget.handlers) {
-      CascadeEventRegistry.registerHandlerBase(context, h);
-    }
+    _registerHandlers(widget.handlers);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Set up tab controller listener if provided
-    _tc = widget.tabController;
+    _attachTabController(widget.tabController);
+  }
+
+  @override
+  void didUpdateWidget(PageCascadeNotifier oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Unregister handlers for types no longer present
+    final newTypes = {for (final h in widget.handlers) h.type};
+    for (final h in oldWidget.handlers) {
+      if (!newTypes.contains(h.type)) {
+        CascadeEventRegistry.unregisterHandlerBase(context, h);
+      }
+    }
+    // Re-register all current handlers (overwrites existing for same type)
+    _registerHandlers(widget.handlers);
+
+    if (oldWidget.tabController != widget.tabController ||
+        oldWidget.tabIndex != widget.tabIndex) {
+      _detachTabController();
+      _attachTabController(widget.tabController);
+    }
+  }
+
+  void _registerHandlers(List<CascadeEventHandler<dynamic>> handlers) {
+    for (final h in handlers) {
+      CascadeEventRegistry.registerHandlerBase(context, h);
+    }
+  }
+
+  void _unregisterHandlers(List<CascadeEventHandler<dynamic>> handlers) {
+    for (final h in handlers) {
+      CascadeEventRegistry.unregisterHandlerBase(context, h);
+    }
+  }
+
+  void _attachTabController(TabController? tc) {
+    if (tc == _tc) return;
+    _detachTabController();
+    _tc = tc;
     if (_tc != null && widget.tabIndex != null) {
       _tc!.addListener(_onTabChanged);
-      // If this tab is already selected, mark it active
       if (_tc!.index == widget.tabIndex) {
         CascadeEventRegistry.activateContext(context);
       }
     }
   }
 
+  void _detachTabController() {
+    _tc?.removeListener(_onTabChanged);
+    _tc = null;
+  }
+
   /// Called when the tab selection changes.
   ///
-  /// If this widget's tab becomes selected, its context is activated.
+  /// Only activates the context when the animation has settled
+  /// and this widget's tab is selected.
   void _onTabChanged() {
-    if (_tc!.index == widget.tabIndex) {
+    if (!_tc!.indexIsChanging && _tc!.index == widget.tabIndex) {
       CascadeEventRegistry.activateContext(context);
     }
   }
 
   @override
   void dispose() {
-    // Unregister all handlers
-    for (final h in widget.handlers) {
-      CascadeEventRegistry.unregisterHandlerBase(context, h);
-    }
-    // Remove tab controller listener
-    _tc?.removeListener(_onTabChanged);
+    _unregisterHandlers(widget.handlers);
+    _detachTabController();
     super.dispose();
   }
 

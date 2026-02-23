@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 ///
 /// ```dart
 /// MaterialApp(
-///   navigatorObservers: [CascadeNavigationTracker()],
+///   navigatorObservers: [CascadeNavigationTracker.instance],
 ///   home: MyHomePage(),
 /// )
 /// ```
@@ -22,17 +22,15 @@ class CascadeNavigationTracker extends RouteObserver<PageRoute<dynamic>> {
   /// Private constructor for singleton pattern
   CascadeNavigationTracker._internal();
 
-  /// The singleton instance
-  static final CascadeNavigationTracker _instance =
+  /// The singleton instance.
+  static final CascadeNavigationTracker instance =
       CascadeNavigationTracker._internal();
 
   /// Factory constructor that returns the singleton instance.
   ///
-  /// Always use this constructor to get the instance:
+  /// Always use this constructor or [instance] to get the instance:
   /// ```dart
   /// final tracker = CascadeNavigationTracker();
   /// ```
-  factory CascadeNavigationTracker() {
-    return _instance;
-  }
+  factory CascadeNavigationTracker() => instance;
 }
