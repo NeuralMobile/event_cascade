@@ -116,7 +116,10 @@ class CascadeEventRegistry {
   static void unregisterHandlerBase(BuildContext ctx, EventHandlerBase h) {
     final map = _handlers[ctx];
     if (map != null) {
-      map.remove(h.type);
+      final existing = map[h.type];
+      if (identical(existing, h)) {
+        map.remove(h.type);
+      }
       if (map.isEmpty) _handlers.remove(ctx);
     }
   }
@@ -181,10 +184,9 @@ class CascadeEventRegistry {
       }
 
       // Slow path: supertype handler match
-      for (final h in ctxHandlers.values) {
+      for (final h in ctxHandlers.values.toList().reversed) {
         if (h.canHandle(event)) {
           if (await h.handle(event)) return;
-          break;
         }
       }
     }

@@ -861,8 +861,7 @@ void main() {
             ],
             child: Scaffold(
               body: Center(
-                child:
-                    ElevatedButton(onPressed: onNext, child: Text('go-$id')),
+                child: ElevatedButton(onPressed: onNext, child: Text('go-$id')),
               ),
             ),
           );
